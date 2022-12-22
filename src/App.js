@@ -140,7 +140,7 @@ const StatusRow = styled.div`
 
 const Notification = styled.div`
   margin: 4px 0 0;
-  color: red;
+  color: ${ props => props.status === 1 ? "red" : "#111122" };
 `
 
 
@@ -153,7 +153,7 @@ function App() {
   const [ bothWalletsConnected, setBothWalletsConnected ] = useState(false)
   const [ activationPrice, setActivationPrice ] = useState(ethers.BigNumber.from("0"))
   const [ activation, setActivation ] = useState(null)
-  const [ notification, setNotification ] = useState("")
+  const [ notification, setNotification ] = useState({ message: "", status: 0 })
 
   const provider = useProvider()
   const { data: signer } = useSigner()
@@ -173,6 +173,7 @@ function App() {
   }
 
   const formatNearAddr = (accId) => {
+    if(accId.length < 64) return accId
     return `${ (accId).slice(0, 5) } ... ${ (accId).slice(61, 64) }`
   }
 
@@ -181,7 +182,7 @@ function App() {
       "Unknown activation status.",
       "Accepted, waiting to receive money on NEAR.",
       "Success.",
-      "Failed (refund optional).",
+      "Failed (optional refund).",
       "Refunded."
     ]
     return statusCodes[ status ]
@@ -205,13 +206,16 @@ function App() {
     if(isConnected && address && accountId && !activationPrice.isZero()) {
       const bal = await provider.getBalance(address)
       if(bal.lt(activationPrice)) {
-        setNotification(`Insufficient Balance.`)
+        setNotification({ message: `Insufficient Balance.`, status: 1 })
         return
       }
       try {
+        setNotification({ message: `Please wait ...`, status: 0 })
         const activationTx = await activator.activate(accountId, address, { value: activationPrice })
         await activationTx.wait()
+        setNotification({ message: ``, status: 0 })
       } catch(err) {
+        setNotification({ message: ``, status: 0 })
         console.log(err.message)
       }
     }
@@ -234,10 +238,8 @@ function App() {
   }, [ isConnected, accountId, activation, activator ])
 
   const handleContinueClick = () => {
-    // get checksummed address, converts from base58
     const checksummed = ethers.utils.getAddress(address)
-    // is address, network is polygon 
-    if(ethers.utils.isAddress(checksummed) && chain.id === 137) {
+    if(ethers.utils.isAddress(checksummed) && chain.id === 137 && selector.isSignedIn() && accountId.length > 0) {
       setDisplayContinue(false)
       setBothWalletsConnected(true)
     }
@@ -248,9 +250,9 @@ function App() {
   }, [ chain, switchNetwork ])
   
   useEffect(() => {
-    if(isConnected && selector.isSignedIn()) setDisplayContinue(true)
+    if(isConnected && selector.isSignedIn() && accountId.length > 0) setDisplayContinue(true)
     else setDisplayContinue(false)
-  }, [ isConnected, selector ])
+  }, [ isConnected, selector, accountId ])
 
   useEffect(() => {
     if(isConnected && signer) {
@@ -276,11 +278,11 @@ function App() {
               : ""
           }
           <RefundButton onClick={ handleRefundClick } active={ activation && Number(activation.status) === 3 }>Refund</RefundButton>
-          <WalletBlock height={ 83 }>
-            <WalletButton onClick={ handleActivateClick }>Activate</WalletButton>
+          <WalletBlock height={ notification.message === "Please wait ..." ? 40 : 83 }>
+            <WalletButton onClick={ handleActivateClick } inactive={ notification.message === "Please wait ..." }>Activate</WalletButton>
             <WalletButton onClick={ handleGetResults }>Get Result</WalletButton>
           </WalletBlock>
-          { notification ? <Notification>{ notification }</Notification> : "" }
+          { notification.message ? <Notification status={ notification.status }>{ notification.message }</Notification> : "" }
         </MainDisplay>
       </AppContainer>
     )
