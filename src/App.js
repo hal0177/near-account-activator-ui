@@ -1,7 +1,9 @@
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useEffect } from "react"
 import styled from "styled-components"
-import { useAccount, useConnect, useDisconnect } from "wagmi"
+import { useNetwork, useAccount, useConnect, useDisconnect, useSwitchNetwork } from "wagmi"
+
+import { useWalletSelector } from "./context"
 
 
 const AppContainer = styled.div`
@@ -62,48 +64,33 @@ const WalletButton = styled.li`
 
 function App() {
 
-  const connectorsNear = [ { name: "Sender Wallet" } ]
+  const { selector, modal, accounts, accountId } = useWalletSelector()
 
   const [ displayContinue, setDisplayContinue ] = useState(false)
-  const [ nearWallet, setNearWallet ] = useState({ name: "", address: "", isConnected: false })
 
+  const { chain } = useNetwork()
+  const { switchNetwork } = useSwitchNetwork()
   const { address, connector, isConnected } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
 
-  const disconnectNear = useCallback(async () => {
-    if(nearWallet.isConnected) {
-      if(nearWallet.name === "Sender Wallet") {
-        window.near.signOut()
-      }
-    }
-  }, [ nearWallet ])
+  const handleSignIn = () => {
+    modal.show()
+  }
 
-  const disconnectEvm = useCallback(async () => {
-    disconnect()
-  }, [ disconnect ])
+  const disconnectNear = async () => {
+    const wallet = await selector.wallet()
+    await wallet.signOut()
+  }
 
-  const handleEvm = useCallback((c) => {
-    connect({ connector: c })
-  }, [ connect ])
-
-  const handleSender = useCallback(async ({ c }) => {
-    if(c.name === "Sender Wallet") {
-      try {
-        await window.near.requestSignIn({ contractId: "guest-book.testnet" })
-        const accountId = window.near.getAccountId()
-        setNearWallet({ name: "Sender Wallet", address: accountId, isConnected: true })
-      } catch(err) {
-        setNearWallet({ name: "", address: "", isConnected: false })
-      }
-    }
-  }, [])
-
+  useEffect(() => {
+    if(chain && chain.id !== 137) switchNetwork(137)
+  }, [ chain, switchNetwork ])
   
   useEffect(() => {
-    if(isConnected && nearWallet.isConnected) setDisplayContinue(true)
+    if(isConnected && selector.isSignedIn()) setDisplayContinue(true)
     else setDisplayContinue(false)
-  }, [ isConnected, nearWallet ])
+  }, [ isConnected, selector ])
 
 
   return (
@@ -113,14 +100,14 @@ function App() {
           isConnected && connector
             ? <>
                 <Instruction>Connected to { connector.name } { (address).slice(0, 7) }...{ (address).slice(39, 42) }</Instruction>
-                <WalletButton onClick={ disconnectEvm }>Disconnect</WalletButton>
+                <WalletButton onClick={ disconnect }>Disconnect</WalletButton>
               </>
             : <>
                 <Instruction>Connect EVM Wallet to Polygon:</Instruction>
                 <WalletBlock height={ 126 }>
                   {
                     connectors.map((c) => (
-                      <WalletButton key={ c.id } onClick={ () => handleEvm(c) }>
+                      <WalletButton key={ c.id } onClick={ () => connect({ connector: c }) }>
                         { c.name }
                       </WalletButton>
                     ))
@@ -130,23 +117,15 @@ function App() {
           }
 
           {
-            nearWallet.isConnected
-            ? <>
-                <Instruction>Connected to { nearWallet.name } { (nearWallet.address).slice(0, 5) }...{ (nearWallet.address).slice(61, 64) }</Instruction>
-                <WalletButton onClick={ disconnectNear }>Disconnect</WalletButton>
-              </>
-            : <>
-                <Instruction>Connect NEAR Wallet:</Instruction>
-                <WalletBlock height={ 40 }>
-                  {
-                    connectorsNear.map((c) => (
-                      <WalletButton key={ c.name } onClick={ () => handleSender({ c }) }>
-                        { c.name }
-                      </WalletButton>
-                    ))
-                  }
-                </WalletBlock>
-              </>
+            selector.isSignedIn()
+              ? <>
+                  <Instruction>Connected to { (accountId).slice(0, 5) }...{ (accountId).slice(61, 64) }</Instruction>
+                  <WalletButton onClick={ disconnectNear }>Disconnect</WalletButton>
+                </>
+              : <>
+                  <Instruction>Connect NEAR Wallet:</Instruction>
+                  <WalletButton onClick={ handleSignIn }>Choose Wallet</WalletButton>
+                </>
           }
 
           <WalletButton inactive={ !displayContinue } margin={ 10 } invertBg={ true }>Continue</WalletButton>

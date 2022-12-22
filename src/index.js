@@ -6,6 +6,8 @@ import reportWebVitals from "./reportWebVitals"
 
 import { createGlobalStyle } from "styled-components"
 
+import "./styles.css"
+
 import { WagmiConfig, createClient, configureChains } from "wagmi"
 import { publicProvider } from "wagmi/providers/public"
 import { polygon } from "wagmi/chains"
@@ -14,8 +16,11 @@ import { CoinbaseWalletConnector } from "wagmi/connectors/coinbaseWallet"
 import { MetaMaskConnector } from "wagmi/connectors/metaMask"
 import { WalletConnectConnector } from "wagmi/connectors/walletConnect"
 
+import { WalletSelectorContextProvider } from "./context"
+
 import { Buffer } from "buffer"
 window.Buffer = window.Buffer || Buffer
+
 
 const GlobalStyle = createGlobalStyle`
   html, body {
@@ -54,12 +59,15 @@ const client = createClient({
   webSocketProvider
 })
 
+
 const root = ReactDOM.createRoot(document.getElementById("root"))
 root.render(
   <React.StrictMode>
     <GlobalStyle/>
     <WagmiConfig client={ client }>
-      <App/>
+      <WalletSelectorContextProvider>
+        <App />
+      </WalletSelectorContextProvider>
     </WagmiConfig>
   </React.StrictMode>
 )
