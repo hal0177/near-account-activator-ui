@@ -178,10 +178,10 @@ function App() {
 
   const getStatusCode = (status) => {
     const statusCodes = [
-      "Unknown",
+      "Unknown activation status.",
       "Accepted, waiting to receive money on NEAR.",
       "Success.",
-      "Failed (refund)",
+      "Failed (refund optional).",
       "Refunded."
     ]
     return statusCodes[ status ]
