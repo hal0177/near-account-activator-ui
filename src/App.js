@@ -5,6 +5,12 @@ import { useNetwork, useAccount, useConnect, useDisconnect, useSwitchNetwork } f
 
 import { useWalletSelector } from "./context"
 
+import mm from "./icons/mm.svg"
+import wc from "./icons/wc.svg"
+import cb from "./icons/cb.svg"
+
+const icons = [ mm, wc, cb ]
+
 
 const AppContainer = styled.div`
   display: flex;
@@ -60,6 +66,17 @@ const WalletButton = styled.li`
   }
 `
 
+const WalletIconSpacer = styled.div`
+  display: flex;
+  justify-content: center;
+  width: 25%;
+`
+
+const WalletIcon = styled.img`
+  width: 25px;
+  height: 25px;
+`
+
 
 
 function App() {
@@ -106,9 +123,10 @@ function App() {
                 <Instruction>Connect EVM Wallet to Polygon:</Instruction>
                 <WalletBlock height={ 126 }>
                   {
-                    connectors.map((c) => (
+                    connectors.map((c, i) => (
                       <WalletButton key={ c.id } onClick={ () => connect({ connector: c }) }>
-                        { c.name }
+                        <WalletIconSpacer><WalletIcon src={ icons[ i ] }/></WalletIconSpacer>
+                        <div style={{ width: "50%" }}>{ c.name }</div>
                       </WalletButton>
                     ))
                   }
