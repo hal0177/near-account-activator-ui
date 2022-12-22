@@ -31,6 +31,10 @@ const GlobalStyle = createGlobalStyle`
     font-family: sans-serif;
     color: #111122;
   }
+
+  * {
+    transition: background-color 0.25s ease;
+  }
 `
 
 

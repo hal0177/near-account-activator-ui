@@ -61,11 +61,13 @@ const WalletButton = styled.li`
   height: 40px;
   margin-top: ${ props => props.margin }px;
   cursor: pointer;
-  background-color: ${ props => props.invertBg ? "#ccccee" : "#ddd" };
+  background-color: ${ props => props.invertBg ? "#3333bb" : "#ccccee" };
   border-radius: 10px;
+  color: ${ props => props.invertBg ? "#ccccee" : "#3333bb" };
+  font-weight: bold;
 
   &:hover {
-    background-color: #ccccee;
+    background-color: ${ props => props.invertBg ? "#4444cc" : "#bbbbdd" };
     box-shadow: ${ props => props.invertBg ? "0px 0px 5px #ddddff" : "0" };
   }
 `
@@ -79,10 +81,12 @@ const RefundButton = styled.div`
   margin: 5px 0;
   cursor: pointer;
   background-color: #eebbbb;
+  color: #bb4444;
+  font-weight: bold;
   border-radius: 10px;
 
   &:hover {
-    background-color: #ffcccc;
+    background-color: #ddaaaa;
   }
 `
 
@@ -126,7 +130,7 @@ const StatusBox = styled.div`
   flex-direction: column;
   align-items: center;
   width: 390px;
-  margin: 5px 0;
+  margin: 5px 0 10px;
   background-color: #ccccee;
   outline: 2px solid #9999bb;
   border-radius: 10px;
@@ -271,15 +275,15 @@ function App() {
             activation
               ? <>
                   <StatusBox>
-                    <StatusRow><div style={{ marginRight: "10px" }}>Activator Address:</div> <WalletHighlight>{ formatEvmAddr(activation.publicKey) }</WalletHighlight></StatusRow>
+                    <StatusRow><div style={{ marginRight: "10px" }}>Activator Address:</div><WalletHighlight>{ formatEvmAddr(activation.publicKey) }</WalletHighlight></StatusRow>
                     <StatusRow>{ getStatusCode(activation.status) }</StatusRow>
                   </StatusBox>
                 </>
               : ""
           }
           <RefundButton onClick={ handleRefundClick } active={ activation && Number(activation.status) === 3 }>Refund</RefundButton>
-          <WalletBlock height={ notification.message === "Please wait ..." ? 40 : 83 }>
-            <WalletButton onClick={ handleActivateClick } inactive={ notification.message === "Please wait ..." }>Activate</WalletButton>
+          <WalletBlock height={ notification.message === "Please wait ..." ? 40 : 85 }>
+            <WalletButton onClick={ handleActivateClick } inactive={ notification.message === "Please wait ..." } invertBg={ true }>Activate</WalletButton>
             <WalletButton onClick={ handleGetResults }>Get Result</WalletButton>
           </WalletBlock>
           { notification.message ? <Notification status={ notification.status }>{ notification.message }</Notification> : "" }
@@ -289,14 +293,13 @@ function App() {
   }
 
 
-  if(!bothWalletsConnected) {
   return (
     <AppContainer>
       <MainDisplay>
         {
           isConnected && connector
             ? <>
-                <Instruction>Connected to { connector.name } <WalletHighlight>{ formatEvmAddr(address) }</WalletHighlight></Instruction>
+                <Instruction>EVM Wallet Connected to { connector.name } <WalletHighlight>{ formatEvmAddr(address) }</WalletHighlight></Instruction>
                 <WalletButton onClick={ disconnect }>Disconnect</WalletButton>
               </>
             : <>
@@ -317,7 +320,7 @@ function App() {
           {
             selector.isSignedIn()
               ? <>
-                  <Instruction>Connected to <WalletHighlight>{ formatNearAddr(accountId) }</WalletHighlight></Instruction>
+                  <Instruction>NEAR Wallet Connected to <WalletHighlight>{ formatNearAddr(accountId) }</WalletHighlight></Instruction>
                   <WalletButton onClick={ disconnectNear }>Disconnect</WalletButton>
                 </>
               : <>
@@ -330,7 +333,6 @@ function App() {
       </MainDisplay>
     </AppContainer>
   )
-  }
 }
 
 export default App
