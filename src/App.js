@@ -1,9 +1,12 @@
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import styled from "styled-components"
-import { useNetwork, useAccount, useConnect, useDisconnect, useSwitchNetwork } from "wagmi"
+import { useProvider, useSigner, useContract, useNetwork, useAccount, useConnect, useDisconnect, useSwitchNetwork } from "wagmi"
+import { ethers } from "ethers"
 
 import { useWalletSelector } from "./context"
+
+import { activatorAbi } from "./activatorAbi"
 
 import mm from "./icons/mm.svg"
 import wc from "./icons/wc.svg"
@@ -67,6 +70,22 @@ const WalletButton = styled.li`
   }
 `
 
+const RefundButton = styled.div`
+  display: ${ props => props.active ? "flex" : "none" };
+  justify-content: center;
+  align-items: center;
+  width: 390px;
+  height: 40px;
+  margin: 5px 0;
+  cursor: pointer;
+  background-color: #eebbbb;
+  border-radius: 10px;
+
+  &:hover {
+    background-color: #ffcccc;
+  }
+`
+
 const WalletIconSpacer = styled.div`
   display: flex;
   justify-content: center;
@@ -78,19 +97,95 @@ const WalletIcon = styled.img`
   height: 25px;
 `
 
+const WalletHighlight = styled.span`
+  color: #3333bb;
+  font-weight: bold;
+`
+
+const PriceRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0 10px;
+  width: 390px;
+  cursor: default;
+`
+
+const PriceTitle = styled.div`
+  margin-left: 5px;
+  font-size: 16px;
+  text-align: center;
+`
+
+const Price = styled.div`
+  margin-right: 5px;
+  font-weight: bold;
+`
+
+const StatusBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 390px;
+  margin: 5px 0;
+  background-color: #ccccee;
+  outline: 2px solid #9999bb;
+  border-radius: 10px;
+  cursor: default;
+`
+
+const StatusRow = styled.div`
+  display: flex;
+  margin: 5px 0;
+`
+
+const Notification = styled.div`
+  margin: 4px 0 0;
+  color: red;
+`
+
 
 
 function App() {
 
-  const { selector, modal, accounts, accountId } = useWalletSelector()
+  const { selector, modal, accountId } = useWalletSelector()
 
   const [ displayContinue, setDisplayContinue ] = useState(false)
+  const [ bothWalletsConnected, setBothWalletsConnected ] = useState(false)
+  const [ activationPrice, setActivationPrice ] = useState(ethers.BigNumber.from("0"))
+  const [ activation, setActivation ] = useState(null)
+  const [ notification, setNotification ] = useState("")
 
+  const provider = useProvider()
+  const { data: signer } = useSigner()
+  const activator = useContract({
+    address: "0x2De68366eF3F5cB580a210312CDa5adA218deb5c",
+    abi: activatorAbi,
+    signerOrProvider: signer
+  })
   const { chain } = useNetwork()
   const { switchNetwork } = useSwitchNetwork()
   const { address, connector, isConnected } = useAccount()
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
+
+  const formatEvmAddr = (addr) => {
+    return `${ (addr).slice(0, 7) } ... ${ (addr).slice(39, 42) }`
+  }
+
+  const formatNearAddr = (accId) => {
+    return `${ (accId).slice(0, 5) } ... ${ (accId).slice(61, 64) }`
+  }
+
+  const getStatusCode = (status) => {
+    const statusCodes = [
+      "Unknown",
+      "Accepted, waiting to receive money on NEAR.",
+      "Success.",
+      "Failed (refund)",
+      "Refunded."
+    ]
+    return statusCodes[ status ]
+  }
 
   const handleSignIn = () => {
     modal.show()
@@ -99,6 +194,53 @@ function App() {
   const disconnectNear = async () => {
     const wallet = await selector.wallet()
     await wallet.signOut()
+  }
+
+  const getPrice = useCallback(async () => {
+    const priceWei = await activator.price()
+    setActivationPrice(priceWei)
+  }, [ activator ])
+
+  const handleActivateClick = useCallback(async () => {
+    if(isConnected && address && accountId && !activationPrice.isZero()) {
+      const bal = await provider.getBalance(address)
+      if(bal.lt(activationPrice)) {
+        setNotification(`Insufficient Balance.`)
+        return
+      }
+      try {
+        const activationTx = await activator.activate(accountId, address, { value: activationPrice })
+        await activationTx.wait()
+      } catch(err) {
+        console.log(err.message)
+      }
+    }
+  }, [ isConnected, provider, address, accountId, activationPrice, activator ])
+
+  const handleGetResults = useCallback(async () => {
+    const result = await activator.activationInfoOf(accountId)
+    setActivation(result)
+  }, [ activator, accountId ])
+
+  const handleRefundClick = useCallback(async () => {
+    if(isConnected && accountId && activation && Number(activation.status) === 3) {
+      try {
+        const refundTx = await activator.refund(accountId)
+        await refundTx.wait()
+      } catch(err) {
+        console.log(err.message)
+      }
+    } 
+  }, [ isConnected, accountId, activation, activator ])
+
+  const handleContinueClick = () => {
+    // get checksummed address, converts from base58
+    const checksummed = ethers.utils.getAddress(address)
+    // is address, network is polygon 
+    if(ethers.utils.isAddress(checksummed) && chain.id === 137) {
+      setDisplayContinue(false)
+      setBothWalletsConnected(true)
+    }
   }
 
   useEffect(() => {
@@ -110,14 +252,49 @@ function App() {
     else setDisplayContinue(false)
   }, [ isConnected, selector ])
 
+  useEffect(() => {
+    if(isConnected && signer) {
+      getPrice()
+    }
+  }, [ isConnected, signer, getPrice ])
 
+
+  if(bothWalletsConnected) {
+    return (
+      <AppContainer>
+        <MainDisplay>
+          <Instruction>Activate NEAR Account</Instruction>
+          <PriceRow><PriceTitle>Activation Price</PriceTitle><Price>{ ethers.utils.formatUnits(activationPrice, "ether") } MATIC</Price></PriceRow>
+          {
+            activation
+              ? <>
+                  <StatusBox>
+                    <StatusRow><div style={{ marginRight: "10px" }}>Activator Address:</div> <WalletHighlight>{ formatEvmAddr(activation.publicKey) }</WalletHighlight></StatusRow>
+                    <StatusRow>{ getStatusCode(activation.status) }</StatusRow>
+                  </StatusBox>
+                </>
+              : ""
+          }
+          <RefundButton onClick={ handleRefundClick } active={ activation && Number(activation.status) === 3 }>Refund</RefundButton>
+          <WalletBlock height={ 83 }>
+            <WalletButton onClick={ handleActivateClick }>Activate</WalletButton>
+            <WalletButton onClick={ handleGetResults }>Get Result</WalletButton>
+          </WalletBlock>
+          { notification ? <Notification>{ notification }</Notification> : "" }
+        </MainDisplay>
+      </AppContainer>
+    )
+  }
+
+
+  if(!bothWalletsConnected) {
   return (
     <AppContainer>
       <MainDisplay>
         {
           isConnected && connector
             ? <>
-                <Instruction>Connected to { connector.name } { (address).slice(0, 7) }...{ (address).slice(39, 42) }</Instruction>
+                <Instruction>Connected to { connector.name } <WalletHighlight>{ formatEvmAddr(address) }</WalletHighlight></Instruction>
                 <WalletButton onClick={ disconnect }>Disconnect</WalletButton>
               </>
             : <>
@@ -138,7 +315,7 @@ function App() {
           {
             selector.isSignedIn()
               ? <>
-                  <Instruction>Connected to { (accountId).slice(0, 5) }...{ (accountId).slice(61, 64) }</Instruction>
+                  <Instruction>Connected to <WalletHighlight>{ formatNearAddr(accountId) }</WalletHighlight></Instruction>
                   <WalletButton onClick={ disconnectNear }>Disconnect</WalletButton>
                 </>
               : <>
@@ -147,10 +324,11 @@ function App() {
                 </>
           }
 
-          <WalletButton inactive={ !displayContinue } margin={ 10 } invertBg={ true }>Continue</WalletButton>
+          <WalletButton onClick={ handleContinueClick } inactive={ !displayContinue } margin={ 10 } invertBg={ true }>Continue</WalletButton>
       </MainDisplay>
     </AppContainer>
   )
+  }
 }
 
 export default App
