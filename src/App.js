@@ -7,7 +7,7 @@ import { useWalletSelector } from "./context"
 
 import mm from "./icons/mm.svg"
 import wc from "./icons/wc.svg"
-import cb from "./icons/cb.svg"
+import cb from "./icons/cb.png"
 
 const icons = [ mm, wc, cb ]
 
@@ -18,7 +18,7 @@ const AppContainer = styled.div`
   align-items: center;
   width: 100vw;
   height: 100vh;
-  background-color: #222233;
+  background-color: #111122;
 `
 
 const MainDisplay = styled.div`
@@ -36,6 +36,7 @@ const Instruction = styled.div`
   font-size: 16px;
   text-align: center;
   cursor: default;
+  font-weight: bold;
 `
 
 const WalletBlock = styled.ul`
@@ -120,7 +121,7 @@ function App() {
                 <WalletButton onClick={ disconnect }>Disconnect</WalletButton>
               </>
             : <>
-                <Instruction>Connect EVM Wallet to Polygon:</Instruction>
+                <Instruction>Connect EVM Wallet to Polygon</Instruction>
                 <WalletBlock height={ 126 }>
                   {
                     connectors.map((c, i) => (
@@ -141,7 +142,7 @@ function App() {
                   <WalletButton onClick={ disconnectNear }>Disconnect</WalletButton>
                 </>
               : <>
-                  <Instruction>Connect NEAR Wallet:</Instruction>
+                  <Instruction>Connect NEAR Wallet</Instruction>
                   <WalletButton onClick={ handleSignIn }>Choose Wallet</WalletButton>
                 </>
           }
