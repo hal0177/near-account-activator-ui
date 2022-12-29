@@ -130,7 +130,7 @@ const StatusBox = styled.div`
   flex-direction: column;
   align-items: center;
   width: 390px;
-  margin: 5px 0 10px;
+  margin: 10px 0 5px;
   background-color: #ccccee;
   outline: 2px solid #9999bb;
   border-radius: 10px;
@@ -205,7 +205,7 @@ function App() {
 
   const displayActivate = () => {
     const loading = Boolean(notification.message === "Please wait ...")
-    const activated = Boolean(activation && (activation.status === 1 || activation.status === 2))
+    const activated = Boolean(activation && (activation.status !== 0))
     return !loading && !activated
   }
 
@@ -245,6 +245,7 @@ function App() {
   const handleGetResults = useCallback(async () => {
     const result = await activator.activationInfoOf(validatedNearAccId)
     setActivation(result)
+    setNotification({ message: "", status: 0 })
   }, [ activator, validatedNearAccId ])
 
   const handleRefundClick = useCallback(async () => {
@@ -293,7 +294,11 @@ function App() {
         <MainDisplay>
           <Instruction>Activate NEAR Account</Instruction>
           <PriceRow><PriceTitle>Activation Price</PriceTitle><Price>{ ethers.utils.formatUnits(activationPrice, "ether") } MATIC</Price></PriceRow>
-          {
+          <WalletBlock height={ displayActivate() ? 85 : 40 }>
+            <WalletButton onClick={ handleActivateClick } inactive={ !(displayActivate()) } invertBg={ true }>Activate</WalletButton>
+            <WalletButton onClick={ handleGetResults }>Get Result</WalletButton>
+          </WalletBlock>
+           {
             activation
               ? <>
                   <StatusBox>
@@ -304,11 +309,11 @@ function App() {
               : ""
           }
           <RefundButton onClick={ handleRefundClick } active={ activation && Number(activation.status) === 3 }>Refund</RefundButton>
-          <WalletBlock height={ displayActivate() ? 85 : 40 }>
-            <WalletButton onClick={ handleActivateClick } inactive={ !(displayActivate()) } invertBg={ true }>Activate</WalletButton>
-            <WalletButton onClick={ handleGetResults }>Get Result</WalletButton>
-          </WalletBlock>
-          { notification.message ? <Notification status={ notification.status }>{ notification.message }</Notification> : "" }
+          {
+            notification.message && (!activation || (activation && Number(activation.status) !== 3))
+              ? <Notification status={ notification.status }>{ notification.message }</Notification>
+              : ""
+          }
         </MainDisplay>
       </AppContainer>
     )
