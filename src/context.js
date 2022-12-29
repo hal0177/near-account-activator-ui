@@ -66,7 +66,7 @@ export const WalletSelectorContextProvider = ({ children }) => {
         })
       ]
     })
-    const _modal = setupModal(_selector, { contractId: "guest-book.testnet" })
+    const _modal = setupModal(_selector, { contractId: "2ea87637b5786188c18d0f38b480e1437ef19db11d09ab02a9872aa8fca31d88" })
     const state = _selector.store.getState()
     setAccounts(state.accounts)
 
@@ -82,7 +82,7 @@ export const WalletSelectorContextProvider = ({ children }) => {
       console.error(err)
       alert("Failed to initialise wallet selector")
     })
-  }, [init])
+  }, [ init ])
 
   useEffect(() => {
     if(!selector) {

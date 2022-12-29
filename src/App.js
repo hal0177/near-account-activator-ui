@@ -192,6 +192,12 @@ function App() {
     return statusCodes[ status ]
   }
 
+  const displayActivate = () => {
+    const loading = Boolean(notification.message === "Please wait ...")
+    const activated = Boolean(activation && (activation.status === 1 || activation.status === 2))
+    return !loading && !activated
+  }
+
   const handleSignIn = () => {
     modal.show()
   }
@@ -282,8 +288,8 @@ function App() {
               : ""
           }
           <RefundButton onClick={ handleRefundClick } active={ activation && Number(activation.status) === 3 }>Refund</RefundButton>
-          <WalletBlock height={ notification.message === "Please wait ..." ? 40 : 85 }>
-            <WalletButton onClick={ handleActivateClick } inactive={ notification.message === "Please wait ..." } invertBg={ true }>Activate</WalletButton>
+          <WalletBlock height={ displayActivate() ? 85 : 40 }>
+            <WalletButton onClick={ handleActivateClick } inactive={ !(displayActivate()) } invertBg={ true }>Activate</WalletButton>
             <WalletButton onClick={ handleGetResults }>Get Result</WalletButton>
           </WalletBlock>
           { notification.message ? <Notification status={ notification.status }>{ notification.message }</Notification> : "" }
