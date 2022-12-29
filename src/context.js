@@ -13,7 +13,7 @@ import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet"
 import { setupWelldoneWallet } from "@near-wallet-selector/welldone-wallet"
 import { setupNightlyConnect } from "@near-wallet-selector/nightly-connect"
 import { setupNearFi } from "@near-wallet-selector/nearfi"
-import { setupWalletConnect } from "@near-wallet-selector/wallet-connect"
+// import { setupWalletConnect } from "@near-wallet-selector/wallet-connect"
 import { setupCoin98Wallet } from "@near-wallet-selector/coin98-wallet"
 import { setupNeth } from "@near-wallet-selector/neth"
 import { setupOptoWallet } from "@near-wallet-selector/opto-wallet"
@@ -46,15 +46,15 @@ export const WalletSelectorContextProvider = ({ children }) => {
           bundle: false,
         }),
         setupOptoWallet(),
-        setupWalletConnect({
-          projectId: "c4f79cc...",
-          metadata: {
-            name: "NEAR Wallet Selector",
-            description: "Example dApp used by NEAR Wallet Selector",
-            url: "https://github.com/near/wallet-selector",
-            icons: [ "https://avatars.githubusercontent.com/u/37784886" ],
-          }
-        }),
+        // setupWalletConnect({
+        //   projectId: "2ea87637b5786188c18d0f38b480e1437ef19db11d09ab02a9872aa8fca31d88",
+        //   metadata: {
+        //     name: "NEAR Wallet Selector",
+        //     description: "Example dApp used by NEAR Wallet Selector",
+        //     url: "https://github.com/near/wallet-selector",
+        //     icons: [ "https://avatars.githubusercontent.com/u/37784886" ],
+        //   }
+        // }),
         setupNightlyConnect({
           url: "wss://relay.nightly.app/app",
           appMetadata: {
