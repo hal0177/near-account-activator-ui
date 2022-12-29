@@ -154,6 +154,7 @@ function App() {
   const { selector, modal, accountId } = useWalletSelector()
 
   const [ displayContinue, setDisplayContinue ] = useState(false)
+  const [ validatedNearAccId, setValidatedNearAccId ] = useState("")
   const [ bothWalletsConnected, setBothWalletsConnected ] = useState(false)
   const [ activationPrice, setActivationPrice ] = useState(ethers.BigNumber.from("0"))
   const [ activation, setActivation ] = useState(null)
@@ -172,13 +173,23 @@ function App() {
   const { connect, connectors } = useConnect()
   const { disconnect } = useDisconnect()
 
+  const isBase58AccountId = (accId) => {
+    return Boolean(/^[A-HJ-NP-Za-km-z1-9]*$/.test(accId))
+  }
+
+  const formatBase58AccountId = (accId) => {
+    if(isBase58AccountId(accId)) return ethers.utils.hexlify(ethers.utils.base58.decode(accId)).slice(2)
+    else return accId
+  }
+
   const formatEvmAddr = (addr) => {
     return `${ (addr).slice(0, 7) } ... ${ (addr).slice(39, 42) }`
   }
 
   const formatNearAddr = (accId) => {
-    if(accId.length < 64) return accId
-    return `${ (accId).slice(0, 5) } ... ${ (accId).slice(61, 64) }`
+    if(isBase58AccountId(accId)) return formatBase58AccountId(accId)
+    else if(accId.length < 64) return accId
+    else return `${ (accId).slice(0, 5) } ... ${ (accId).slice(61, 64) }`
   }
 
   const getStatusCode = (status) => {
@@ -213,7 +224,7 @@ function App() {
   }, [ activator ])
 
   const handleActivateClick = useCallback(async () => {
-    if(isConnected && address && accountId && !activationPrice.isZero()) {
+    if(isConnected && address && validatedNearAccId && !activationPrice.isZero()) {
       const bal = await provider.getBalance(address)
       if(bal.lt(activationPrice)) {
         setNotification({ message: `Insufficient Balance.`, status: 1 })
@@ -221,7 +232,7 @@ function App() {
       }
       try {
         setNotification({ message: `Please wait ...`, status: 0 })
-        const activationTx = await activator.activate(accountId, address, { value: activationPrice })
+        const activationTx = await activator.activate(validatedNearAccId, address, { value: activationPrice })
         await activationTx.wait()
         setNotification({ message: ``, status: 0 })
       } catch(err) {
@@ -229,29 +240,34 @@ function App() {
         console.log(err.message)
       }
     }
-  }, [ isConnected, provider, address, accountId, activationPrice, activator ])
+  }, [ isConnected, provider, address, validatedNearAccId, activationPrice, activator ])
 
   const handleGetResults = useCallback(async () => {
-    const result = await activator.activationInfoOf(accountId)
+    const result = await activator.activationInfoOf(validatedNearAccId)
     setActivation(result)
-  }, [ activator, accountId ])
+  }, [ activator, validatedNearAccId ])
 
   const handleRefundClick = useCallback(async () => {
-    if(isConnected && accountId && activation && Number(activation.status) === 3) {
+    if(isConnected && validatedNearAccId && activation && Number(activation.status) === 3) {
       try {
-        const refundTx = await activator.refund(accountId)
+        const refundTx = await activator.refund(validatedNearAccId)
         await refundTx.wait()
       } catch(err) {
         console.log(err.message)
       }
     } 
-  }, [ isConnected, accountId, activation, activator ])
+  }, [ isConnected, validatedNearAccId, activation, activator ])
 
   const handleContinueClick = () => {
     const checksummed = ethers.utils.getAddress(address)
-    if(ethers.utils.isAddress(checksummed) && chain.id === 137 && selector.isSignedIn() && accountId.length > 0) {
+    const validAccountId = (isBase58AccountId(accountId)
+      ? formatBase58AccountId(accountId)
+      : accountId
+    )
+    if(ethers.utils.isAddress(checksummed) && chain.id === 137 && selector.isSignedIn() && validAccountId.length > 0) {
       setDisplayContinue(false)
       setBothWalletsConnected(true)
+      setValidatedNearAccId(validAccountId)
     }
   }
 
