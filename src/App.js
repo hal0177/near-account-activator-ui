@@ -90,6 +90,27 @@ const RefundButton = styled.div`
   }
 `
 
+const NearWalletInput = styled.textarea`
+  display: ${ props => props.inactive ? "none" : "flex" };
+  justify-content: center;
+  align-items: center;
+  width: 370px;
+  margin-top: 5px;
+  padding: 10px;
+  background-color: #ccccee;
+  border: 0;
+  border-radius: 10px;
+  color: #3333bb;
+  font-size: 16px;
+  font-weight: bold;
+  outline: none;
+  resize: none;
+ 
+  &:focus {
+    outline: 2px solid #9999bb;
+  }
+`
+
 const WalletIconSpacer = styled.div`
   display: flex;
   justify-content: center;
@@ -159,6 +180,8 @@ function App() {
   const [ activationPrice, setActivationPrice ] = useState(ethers.BigNumber.from("0"))
   const [ activation, setActivation ] = useState(null)
   const [ notification, setNotification ] = useState({ message: "", status: 0 })
+  const [ pastedAccountId, setPastedAccountId ] = useState("")
+  const [ validPastedAccountId, setValidPastedAccountId ] = useState("")
 
   const provider = useProvider()
   const { data: signer } = useSigner()
@@ -177,10 +200,14 @@ function App() {
     return Boolean(/^[A-HJ-NP-Za-km-z1-9]*$/.test(accId))
   }
 
-  const formatBase58AccountId = (accId) => {
+  const isHexAccountId = (accId) => {
+    return Boolean(/^[0-9a-f]*$/.test(accId))
+  }
+
+  const formatBase58AccountId = useCallback((accId) => {
     if(isBase58AccountId(accId)) return ethers.utils.hexlify(ethers.utils.base58.decode(accId)).slice(2)
     else return accId
-  }
+  }, [])
 
   const formatEvmAddr = (addr) => {
     return `${ (addr).slice(0, 7) } ... ${ (addr).slice(39, 42) }`
@@ -260,16 +287,22 @@ function App() {
   }, [ isConnected, validatedNearAccId, activation, activator ])
 
   const handleContinueClick = () => {
+    const currentAccountId = validPastedAccountId ? validPastedAccountId : accountId
     const checksummed = ethers.utils.getAddress(address)
-    const validAccountId = (isBase58AccountId(accountId)
-      ? formatBase58AccountId(accountId)
-      : accountId
+    const validAccountId = (isBase58AccountId(currentAccountId)
+      ? formatBase58AccountId(currentAccountId)
+      : currentAccountId
     )
-    if(ethers.utils.isAddress(checksummed) && chain.id === 137 && selector.isSignedIn() && validAccountId.length > 0) {
+    if(ethers.utils.isAddress(checksummed) && chain.id === 137 && (selector.isSignedIn() || validPastedAccountId) && validAccountId.length > 0) {
       setDisplayContinue(false)
       setBothWalletsConnected(true)
       setValidatedNearAccId(validAccountId)
     }
+  }
+
+  const clearPastedAccountIds = () => {
+    setPastedAccountId("")
+    setValidPastedAccountId("")
   }
 
   useEffect(() => {
@@ -277,15 +310,31 @@ function App() {
   }, [ chain, switchNetwork ])
   
   useEffect(() => {
-    if(isConnected && selector.isSignedIn() && accountId.length > 0) setDisplayContinue(true)
+    if(isConnected && ((selector.isSignedIn() && accountId.length > 0) || (validPastedAccountId && validPastedAccountId.length > 0))) setDisplayContinue(true)
     else setDisplayContinue(false)
-  }, [ isConnected, selector, accountId ])
+  }, [ isConnected, selector, accountId, validPastedAccountId ])
 
   useEffect(() => {
     if(isConnected && signer) {
       getPrice()
     }
   }, [ isConnected, signer, getPrice ])
+
+  useEffect(() => {
+    if(pastedAccountId.length === 44 && isBase58AccountId(pastedAccountId)) {
+      console.log(`${ pastedAccountId } is a valid base58 account id`)
+      setValidPastedAccountId(formatBase58AccountId(pastedAccountId))
+    } else if(pastedAccountId.length === 64 && isHexAccountId(pastedAccountId)) {
+      console.log(`${ pastedAccountId } is a valid hex account id`)
+      setValidPastedAccountId(pastedAccountId)
+    // } else if(pastedAccountId.length > 5 && pastedAccountId.slice(pastedAccountId.length - 5, pastedAccountId.length) === ".near") {
+    //   console.log(`${ pastedAccountId } is a valid .near name`)
+    //   // check it exists
+    //   console.log(selector)
+    //   setValidPastedAccountId(pastedAccountId)
+    } else setValidPastedAccountId("")
+
+  }, [ selector, pastedAccountId, formatBase58AccountId ])
 
 
   if(bothWalletsConnected) {
@@ -345,14 +394,15 @@ function App() {
           }
 
           {
-            selector.isSignedIn()
+            selector.isSignedIn() || validPastedAccountId
               ? <>
-                  <Instruction>NEAR Wallet Connected to <WalletHighlight>{ formatNearAddr(accountId) }</WalletHighlight></Instruction>
-                  <WalletButton onClick={ disconnectNear }>Disconnect</WalletButton>
+                  <Instruction>NEAR Wallet Connected to <WalletHighlight>{ validPastedAccountId ? formatNearAddr(validPastedAccountId) : formatNearAddr(accountId) }</WalletHighlight></Instruction>
+                  <WalletButton onClick={ () => validPastedAccountId ? clearPastedAccountIds() : disconnectNear()}>{ validPastedAccountId ? "Clear" : "Disconnect" }</WalletButton>
                 </>
               : <>
                   <Instruction>Connect NEAR Wallet</Instruction>
                   <WalletButton onClick={ handleSignIn }>Choose Wallet</WalletButton>
+                  <NearWalletInput spellCheck={ false } placeholder={ "... or paste NEAR hex account ID here" } value={ pastedAccountId } onChange={ (e) => setPastedAccountId(e.target.value) }/>
                 </>
           }
 
