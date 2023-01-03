@@ -165,6 +165,7 @@ const StatusRow = styled.div`
 
 const Notification = styled.div`
   margin: 4px 0 0;
+  padding: 0 10px;
   color: ${ props => props.status === 1 ? "red" : "#111122" };
 `
 
@@ -231,7 +232,7 @@ function App() {
   }
 
   const displayActivate = () => {
-    const loading = Boolean(notification.message === "Please wait ...")
+    const loading = Boolean(notification.message === "Please wait ..." || notification.message === "Confirmed, please wait a few seconds and then get result.")
     const activated = Boolean(activation && (activation.status !== 0))
     return !loading && !activated
   }
@@ -261,7 +262,7 @@ function App() {
         setNotification({ message: `Please wait ...`, status: 0 })
         const activationTx = await activator.activate(validatedNearAccId, address, { value: activationPrice })
         await activationTx.wait()
-        setNotification({ message: ``, status: 0 })
+        setNotification({ message: `Confirmed, please wait a few seconds and then get result.`, status: 0 })
       } catch(err) {
         setNotification({ message: ``, status: 0 })
         console.log(err.message)
